@@ -17,6 +17,7 @@
 #include <console.h>
 #include <pc_output.h>
 #include <usb_device.h>
+#include "link_a.h"
 #include "router.h"
 
 using namespace kvm;
@@ -42,10 +43,27 @@ static void cmdStats(int, char **) {
               usbdev::suspended() ? " (suspended)" : "", usbdev::leds());
 }
 
+static void cmdLink(int, char **) { linka::printStatus(); }
+
+static void cmdPing(int argc, char **argv) {
+  linka::requestPing(argc > 1 ? (uint16_t)strtoul(argv[1], nullptr, 10) : 100);
+}
+
+static void cmdTarget(int argc, char **argv) {
+  if (argc > 1 && (argv[1][0] == 'a' || argv[1][0] == 'b')) {
+    router::requestTarget(argv[1][0] == 'a' ? router::PC_A : router::PC_B);
+    return;
+  }
+  log::printf("input goes to PC %c\n", router::target() == router::PC_A ? 'A' : 'B');
+}
+
 static const console::Command kCommands[] = {
   {"lat", "[reset] - latency histogram (input -> PC collected)", cmdLat},
   {"src", "- list attached HID interfaces", cmdSrc},
   {"stats", "- counters and PC state", cmdStats},
+  {"link", "- UART link status (B up?, errors, PC B state)", cmdLink},
+  {"ping", "[n] - n round trips to B, RTT stats", cmdPing},
+  {"target", "[a|b] - move keyboard/mouse only (no relays)", cmdTarget},
 };
 
 // ------------------------------------------------------------------ core 0
