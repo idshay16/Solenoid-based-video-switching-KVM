@@ -32,7 +32,11 @@ Top priorities: **smooth transitions** and **minimal added input latency**.
   - Target A: SPSC ring to core 0.
 - **Pico A core 0:** TinyUSB device, switch controller, relay state machine, press log, CDC console.
 - **Pico B:** UART RX (COBS + CRC8) → TinyUSB device.
-- **Both Picos expose identical fixed descriptors:** keyboard, mouse and consumer, each on its own interface/endpoint. They stay enumerated permanently, with no USB detach on a switch.
+- **Both Picos expose identical fixed descriptors** (`hid_reports.h`, `usb_device.*`), and both stay enumerated permanently, with no USB detach on a switch.
+  - HID interface 0: boot keyboard.
+  - HID interface 1: mouse (16-bit XY, report ID 1) + consumer (report ID 2).
+  - Each interface has its own 1 ms endpoint. Consumer shares the mouse endpoint because the TinyUSB build caps it at `CFG_TUD_HID=2`, and the IDE can't override that.
+  - The "PC collected a report" hook is our own `tud_hid_report_complete_cb` in `usb_device.cpp`. Don't define it elsewhere.
 - **Latency rules:**
   - Coalesce mouse motion; queue only button and key edges.
   - Send from `tud_hid_report_complete_cb`.
