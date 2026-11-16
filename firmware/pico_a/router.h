@@ -18,5 +18,6 @@ uint32_t switchCount();
 
 void requestDescribe();
 uint32_t reportsIn();
+uint32_t hotkeyCount();   // increments on each hotkey press (KVM_HOTKEY_ENABLED)
 
 }  // namespace router

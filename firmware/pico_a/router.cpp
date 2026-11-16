@@ -2,6 +2,7 @@
 #include <Arduino.h>
 #include <Adafruit_TinyUSB.h>
 #include <input_model.h>
+#include <kvm_config.h>
 #include <kvm_hot.h>
 #include <kvm_log.h>
 #include <pc_output.h>
@@ -33,9 +34,24 @@ void KVM_HOT(deliver)(uint8_t f, const hid::Decoded &d, uint32_t t) {
   }
 }
 
+volatile uint32_t g_hotkeys = 0;
+bool g_hot_down = false;
+
 void KVM_HOT(onReport)(uint8_t src, uint8_t rid, const hid::Decoded &d, uint32_t t) {
   g_reports_in = g_reports_in + 1;
-  deliver(g_model.apply(src, rid, d), d, t);
+  uint8_t f = g_model.apply(src, rid, d);
+#if KVM_HOTKEY_ENABLED
+  const bool hot = g_model.rawKeys().test(KVM_HOTKEY_KEY) && (g_model.rawMods() & KVM_HOTKEY_MODS) == KVM_HOTKEY_MODS;
+  if (hot && !g_hot_down) {
+    // Hide the hotkey (and its modifiers) from the current PC before anything
+    // is delivered; core 0 turns the count into a switch press.
+    g_model.suppressHeld();
+    f |= InputModel::KBD_CHANGED | InputModel::BTN_CHANGED;
+    g_hotkeys = g_hotkeys + 1;
+  }
+  g_hot_down = hot;
+#endif
+  deliver(f, d, t);
 }
 
 void onUnmount(uint8_t src) {
@@ -97,5 +113,6 @@ Target target() { return g_target; }
 uint32_t switchCount() { return g_switches; }
 void requestDescribe() { g_req_describe = true; }
 uint32_t reportsIn() { return g_reports_in; }
+uint32_t hotkeyCount() { return g_hotkeys; }
 
 }  // namespace router

@@ -51,6 +51,15 @@
 #ifndef KVM_HOTKEY_ENABLED
 #define KVM_HOTKEY_ENABLED        0        // optional keyboard hotkey; box button is the primary trigger
 #endif
+#ifndef KVM_HOTKEY_MODS
+#define KVM_HOTKEY_MODS           0x00     // modifier bits that must be held (0x01 LCtrl 0x02 LShift 0x04 LAlt 0x10 RCtrl ...)
+#endif
+#ifndef KVM_HOTKEY_KEY
+#define KVM_HOTKEY_KEY            0x47     // HID usage of the trigger key (0x47 = Scroll Lock); never reaches either PC
+#endif
+#ifndef KVM_BUTTON_CONFIRM_US
+#define KVM_BUTTON_CONFIRM_US     1000u    // button must read pressed this long (noise filter) before acting
+#endif
 
 // ---------------------------------------------------------------- latency
 #ifndef KVM_SOF_PHASE_LOCK

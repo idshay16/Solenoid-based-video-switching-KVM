@@ -19,6 +19,7 @@
 #include <usb_device.h>
 #include "link_a.h"
 #include "router.h"
+#include "switcher.h"
 
 using namespace kvm;
 
@@ -49,12 +50,12 @@ static void cmdPing(int argc, char **argv) {
   linka::requestPing(argc > 1 ? (uint16_t)strtoul(argv[1], nullptr, 10) : 100);
 }
 
-static void cmdTarget(int argc, char **argv) {
-  if (argc > 1 && (argv[1][0] == 'a' || argv[1][0] == 'b')) {
-    router::requestTarget(argv[1][0] == 'a' ? router::PC_A : router::PC_B);
-    return;
-  }
-  log::printf("input goes to PC %c\n", router::target() == router::PC_A ? 'A' : 'B');
+static void cmdSwitch(int, char **) { switcher::press("console"); }
+
+static void cmdState(int, char **) {
+  log::printf("input goes to PC %c (%lu switches)\n", router::target() == router::PC_A ? 'A' : 'B',
+              (unsigned long)router::switchCount());
+  switcher::printStatus();
 }
 
 static const console::Command kCommands[] = {
@@ -63,7 +64,8 @@ static const console::Command kCommands[] = {
   {"stats", "- counters and PC state", cmdStats},
   {"link", "- UART link status (B up?, errors, PC B state)", cmdLink},
   {"ping", "[n] - n round trips to B, RTT stats", cmdPing},
-  {"target", "[a|b] - move keyboard/mouse only (no relays)", cmdTarget},
+  {"switch", "- same as pressing the lid button", cmdSwitch},
+  {"state", "- active PC, switch status", cmdState},
 };
 
 // ------------------------------------------------------------------ core 0
@@ -74,10 +76,12 @@ void setup() {
   console::begin(kCommands, sizeof kCommands / sizeof kCommands[0],
                  "=== KVM Pico A (" __DATE__ " " __TIME__ ") ===");
   pinMode(ONBOARD_LED, OUTPUT);
+  switcher::begin();
 }
 
 void loop() {
   pcout::loop();
+  switcher::loop();
   console::loop();
   digitalWrite(ONBOARD_LED, usbdev::mounted());
 }
