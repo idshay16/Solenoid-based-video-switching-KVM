@@ -31,6 +31,7 @@ bool g_link_up = false;
 bool g_active = false;
 uint32_t g_last_rx_ms = 0;
 uint32_t g_timeouts = 0;
+uint32_t g_violations = 0;
 uint8_t g_leds_sent = 0xFF;
 
 // What we've pushed to the PC (for heartbeat healing).
@@ -151,8 +152,8 @@ void cmdLink(int, char **) {
               (unsigned long)linkuart::baud(), (unsigned long)linkuart::rx().frames(),
               (unsigned long)linkuart::rx().crcErrors(), (unsigned long)linkuart::rx().framingErrors(),
               (unsigned long)linkuart::uartErrors(), (unsigned long)linkuart::rxDropped(), (unsigned long)g_timeouts);
-  log::printf("PC B: %s%s, LEDs %02x\n", usbdev::mounted() ? "mounted" : "not mounted", usbdev::suspended() ? " (suspended)" : "",
-              usbdev::leds());
+  log::printf("PC B: %s%s, LEDs %02x | invariant violations %lu\n", usbdev::mounted() ? "mounted" : "not mounted",
+              usbdev::suspended() ? " (suspended)" : "", usbdev::leds(), (unsigned long)g_violations);
 }
 
 const console::Command kCommands[] = {
@@ -171,11 +172,31 @@ void setup() {
   log::printf("link UART%u GP%u/GP%u at %lu baud\n", pico_b::LINK_UART, pico_b::LINK_TX, pico_b::LINK_RX, (unsigned long)baud);
   if (board::role() == board::A) log::printf("WARNING: this is Pico A's board (id %s) running the Pico B firmware\n", board::id());
   pinMode(ONBOARD_LED, OUTPUT);
+  if (rp2040.getResetReason() == RP2040::WDT_RESET) log::printf("NOTE: last reset was the WATCHDOG\n");
+  rp2040.wdt_begin(1000);
+}
+
+// Soak invariant: 200 ms after B stops being the target (switch away or link
+// loss), the work PC must not believe anything is held.
+static void checkInvariant() {
+  static bool prev = false, armed = false;
+  static uint32_t since = 0;
+  if (prev && !g_active) { armed = true; since = millis(); }
+  prev = g_active;
+  if (armed && millis() - since > 200) {
+    armed = false;
+    if (pcout::pcHolds()) {
+      g_violations++;
+      log::printf("INVARIANT: PC B still holds a key/button 200 ms after becoming inactive\n");
+    }
+  }
 }
 
 void loop() {
+  rp2040.wdt_reset();
   serviceLink();
   pcout::loop();
+  checkInvariant();
   console::loop();
   // LED: solid = link up and active, slow blink = link up, off = no link
   digitalWrite(ONBOARD_LED, g_link_up && (g_active || (millis() / 500) % 2));

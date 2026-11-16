@@ -41,6 +41,10 @@ void stats(Stats &kbd, Stats &mouse);
 void resetStats();
 void printStats();     // via kvm::log
 
+// True if the PC currently believes a key, modifier or mouse button is held
+// (based on the last report it collected). Used by soak invariants.
+bool pcHolds();
+
 // Counters
 uint32_t sentCount();
 uint32_t wakeups();

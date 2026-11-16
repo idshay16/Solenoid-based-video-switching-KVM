@@ -156,6 +156,14 @@ void printStats() {
   log::printf("  sent %lu reports, remote wakeups %lu\n", (unsigned long)g_sent, (unsigned long)g_wakeups);
 }
 
+bool pcHolds() {
+  Lock l;
+  const KbdReport k = g_out.kbdSent();
+  bool keys = k.modifiers != 0;
+  for (uint8_t u : k.keys) keys = keys || u;
+  return keys || g_out.buttonsSent() != 0;
+}
+
 uint32_t sentCount() { return g_sent; }
 uint32_t wakeups() { return g_wakeups; }
 void setPollObserver(void (*fn)(uint8_t, uint32_t)) { g_poll_observer = fn; }

@@ -20,5 +20,7 @@ uint32_t switchCount();
 void requestDescribe();
 uint32_t reportsIn();
 uint32_t hotkeyCount();   // increments on each hotkey press (KVM_HOTKEY_ENABLED)
+uint32_t lastSwitchMs();  // millis() of the last performed switch
+uint32_t loops();         // core 1 loop counter (liveness for the watchdog)
 
 }  // namespace router

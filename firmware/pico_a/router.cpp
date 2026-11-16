@@ -18,7 +18,7 @@ namespace {
 InputModel g_model;                       // core 1 only
 volatile Target g_target = PC_A;          // written by core 1 only
 volatile Target g_req_target = PC_A;      // written by core 0
-volatile uint32_t g_reports_in = 0, g_switches = 0;
+volatile uint32_t g_reports_in = 0, g_switches = 0, g_last_switch_ms = 0, g_loops = 0;
 volatile bool g_req_describe = false;
 
 // Send the changes `f` (InputModel flags) to the active PC.
@@ -70,6 +70,7 @@ void doSwitch(Target to) {
   // 3. Route.
   g_target = to;
   g_switches = g_switches + 1;
+  g_last_switch_ms = millis();
   log::printf("switch -> PC %c (%lu us)\n", to == PC_A ? 'A' : 'B', (unsigned long)(time_us_32() - t));
 }
 }  // namespace
@@ -89,6 +90,7 @@ void begin() {
 }
 
 void KVM_HOT(task)() {
+  g_loops = g_loops + 1;
   host::task();
 
   const Target req = g_req_target;
@@ -121,5 +123,7 @@ uint32_t switchCount() { return g_switches; }
 void requestDescribe() { g_req_describe = true; }
 uint32_t reportsIn() { return g_reports_in; }
 uint32_t hotkeyCount() { return g_hotkeys; }
+uint32_t lastSwitchMs() { return g_last_switch_ms; }
+uint32_t loops() { return g_loops; }
 
 }  // namespace router

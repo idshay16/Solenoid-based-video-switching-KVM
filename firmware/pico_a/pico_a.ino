@@ -22,6 +22,7 @@
 #include "link_a.h"
 #include "relays.h"
 #include "router.h"
+#include "soak.h"
 #include "switcher.h"
 
 using namespace kvm;
@@ -74,6 +75,12 @@ static void cmdBaseline(int argc, char **argv) {
 
 static void cmdLog(int argc, char **argv) { switcher::printLog(argc > 1 ? strtoul(argv[1], nullptr, 10) : 20); }
 
+static void cmdSoak(int argc, char **argv) {
+  if (argc < 2) { soak::printReport(); return; }
+  if (!strcmp(argv[1], "stop")) { soak::stop(); return; }
+  soak::start(strtoul(argv[1], nullptr, 10) * 1000, argc > 2 ? strtoul(argv[2], nullptr, 10) : 0);
+}
+
 static const console::Command kCommands[] = {
   {"state", "- active PC, monitor inputs, press log", cmdState},
   {"switch", "- same as pressing the lid button", cmdSwitch},
@@ -85,6 +92,7 @@ static const console::Command kCommands[] = {
   {"stats", "- counters and PC A state", cmdStats},
   {"link", "- UART link status (B up?, errors, PC B state)", cmdLink},
   {"ping", "[n] - n round trips to B, RTT stats", cmdPing},
+  {"soak", "[sec [count]] | stop - auto-switch every sec s; no args = report", cmdSoak},
 };
 
 // ------------------------------------------------------------------ core 0
@@ -99,11 +107,13 @@ void setup() {
   pinMode(ONBOARD_LED, OUTPUT);
   switcher::begin();   // press log + DP state (may erase flash: before the host starts)
   router::start();     // let core 1 start the USB host and the link
+  soak::begin();       // watchdog on from here
 }
 
 void loop() {
   pcout::loop();
   switcher::loop();
+  soak::loop();
   console::loop();
   digitalWrite(ONBOARD_LED, usbdev::mounted());
 }
