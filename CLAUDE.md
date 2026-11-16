@@ -30,7 +30,10 @@ Top priorities: **smooth transitions** and **minimal added input latency**.
 - **Pico A core 1:** PIO-USB host → own HID report-descriptor parser → normalized events → router. Core 1 is the sole UART owner.
   - Target B: send over UART directly.
   - Target A: SPSC ring to core 0.
+  - USB host = Adafruit TinyUSB host stack on PIO-USB (`Adafruit_USBH_Host`, `configure_pio_usb`), run from `setup1()/loop1()`. TinyUSB defaults HID devices to **boot protocol**; call `tuh_hid_set_default_protocol(HID_PROTOCOL_REPORT)` before `begin`. Report descriptors > 256 bytes arrive as NULL in `tuh_hid_mount_cb` and must be fetched with `tuh_descriptor_get_hid_report`.
 - **Pico A core 0:** TinyUSB device, switch controller, relay state machine, press log, CDC console.
+  - The device stack's `tud_task` runs in a soft IRQ on core 0 holding `__usb_mutex`; main-loop code that calls `tud_hid_*` must hold that mutex too.
+- **Logging:** never `Serial.print` from core 1 or hot code; use `kvm::log::printf` (`kvm_log.h`, RAM ring) and drain it from the core 0 loop.
 - **Pico B:** UART RX (COBS + CRC8) → TinyUSB device.
 - **Both Picos expose identical fixed descriptors** (`hid_reports.h`, `usb_device.*`), and both stay enumerated permanently, with no USB detach on a switch.
   - HID interface 0: boot keyboard.

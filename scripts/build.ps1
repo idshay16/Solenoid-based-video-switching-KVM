@@ -48,5 +48,8 @@ if ($Port) { $CliArgs += @('--upload', '--port', $Port) }
 $CliArgs += (Resolve-Path $Sketch).Path
 
 Write-Host "arduino-cli $($CliArgs -join ' ')" -ForegroundColor DarkGray
-& $Cli @CliArgs
+# Compiler diagnostics go to stderr; with ErrorActionPreference=Stop, PowerShell 5.1
+# would turn the first stderr line into a terminating error and hide the rest.
+$ErrorActionPreference = 'Continue'
+& $Cli @CliArgs 2>&1 | ForEach-Object { "$_" }
 exit $LASTEXITCODE
