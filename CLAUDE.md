@@ -83,21 +83,25 @@ Core and libraries:
 - arduino-cli is not on PATH. `scripts/build.ps1` falls back to the copy bundled with Arduino IDE 2.
 - FQBN: `rp2040:rp2040:rpipico2:usbstack=tinyusb,freq=120,opt=Optimize2,flash=4194304_65536`. PIO-USB needs the clock to be a multiple of 12 MHz: 120, or 240 MHz to try.
 - Every sketch must `#include <Adafruit_TinyUSB.h>`. Without it, `Serial` fails to link under `usbstack=tinyusb`.
+- `kvm_common` uses `dot_a_linkage=true`: library objects link only when a sketch references them. That lets a bring-up sketch define its own `tuh_*` callbacks as long as it doesn't use `usb_host.*`. Strong callbacks in the library override TinyUSB's weak defaults once pulled in (check with `arm-none-eabi-nm` if in doubt).
+- Host-side unit tests (pure C++ parts: parser, model, queue, link protocol, press log, PLL) run in WSL g++ with ASan/UBSan: `.\scripts\test.ps1`. Keep those modules free of Arduino/pico includes (use `kvm_hot.h` for RAM placement).
+- Python on this machine is the Windows Store stub (it hangs waiting for input). Don't call `python`/`python3` from Bash; use WSL's `python3` if needed.
 
 ```powershell
 .\scripts\build.ps1 firmware\bringup\01_chipinfo            # compile
 .\scripts\build.ps1 firmware\bringup\01_chipinfo -Port COM7 # compile + upload
 .\scripts\build.ps1 -ListPorts
+.\scripts\test.ps1                                          # host unit tests (WSL)
 ```
 First flash of a blank Pico: hold BOOTSEL while plugging it in.
 
 ## Layout
 ```
-firmware/libraries/kvm_common/   shared: kvm_pins.h, kvm_config.h, (later) hid_parser, link_proto, usb_desc
+firmware/libraries/kvm_common/   shared library (see src/*.h headers for each module's role)
 firmware/bringup/NN_name/        one small test sketch per step
-firmware/pico_a/, pico_b/        main firmware (later)
-firmware/tests/                  host-side unit tests (later)
-scripts/build.ps1                arduino-cli wrapper
+firmware/pico_a/, pico_b/        main firmware
+firmware/tests/                  host-side unit tests (scripts/test.ps1)
+scripts/build.ps1, test.ps1      arduino-cli wrapper, host tests
 ```
 
 ## Build order
