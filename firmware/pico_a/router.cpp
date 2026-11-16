@@ -74,7 +74,13 @@ void doSwitch(Target to) {
 }
 }  // namespace
 
+volatile bool g_start = false;
+
 void begin() {
+  // arduino-pico starts core 1 before setup(). Wait until core 0 has done its
+  // boot-time flash work (press log mount may erase sectors) so the USB host
+  // never sees a 50 ms stall mid-enumeration.
+  while (!g_start) tight_loop_contents();
   linka::begin();
   host::Hooks h;
   h.report = onReport;
@@ -108,6 +114,7 @@ void KVM_HOT(task)() {
   }
 }
 
+void start() { g_start = true; }
 void requestTarget(Target t) { g_req_target = t; }
 Target target() { return g_target; }
 uint32_t switchCount() { return g_switches; }

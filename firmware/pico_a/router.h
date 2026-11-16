@@ -7,7 +7,8 @@ namespace router {
 
 enum Target : uint8_t { PC_A = 0, PC_B = 1 };
 
-void begin();   // setup1()
+void begin();   // setup1(): blocks until start() is called from core 0
+void start();   // core 0, after boot-time flash work is done
 void task();    // loop1()
 
 // Core 0 -> core 1. The switch happens on core 1's next loop (microseconds):
