@@ -1,1 +1,10 @@
 build_guide.html
+build/
+*.uf2
+*.elf
+*.bin
+*.map
+firmware/tests/bin/
+__pycache__/
+.vscode/
+.claude/settings.local.json
