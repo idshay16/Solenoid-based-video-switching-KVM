@@ -17,6 +17,14 @@ void begin(const char *product);
 // Call from loop() on every iteration (no-op where the core runs the USB task itself).
 void task();
 
+// Main-loop entry for sending. The TinyUSB device task runs in a soft IRQ on
+// core 0 holding the global USB mutex, and the "report collected" hook runs
+// inside it. From loop(), call service(pump): it takes the mutex (skips if the
+// IRQ has it), runs pump() — which may call send*() — then runs tud_task() so
+// any event the IRQ had to skip while we held the mutex is not left waiting.
+// Returns false if the mutex was busy. Core 0 only.
+bool service(void (*pump)());
+
 bool mounted();
 bool suspended();
 bool remoteWakeup();   // ask a sleeping PC to wake; returns false if not allowed/not suspended

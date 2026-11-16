@@ -1,0 +1,5 @@
+# Keep LF in the repo and in working copies (scripts/test.sh runs under WSL sh).
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.uf2 binary

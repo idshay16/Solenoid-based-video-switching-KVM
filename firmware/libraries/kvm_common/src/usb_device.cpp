@@ -1,5 +1,9 @@
 #include "usb_device.h"
 #include <Adafruit_TinyUSB.h>
+#include <pico/mutex.h>
+
+// Defined in Adafruit_TinyUSB_rp2040.cpp: held while tud_task() runs (IRQ or task).
+extern mutex_t __usb_mutex;
 
 namespace kvm {
 namespace usbdev {
@@ -50,6 +54,14 @@ void task() {
 #endif
 }
 
+bool service(void (*pump)()) {
+  if (!mutex_try_enter(&__usb_mutex, nullptr)) return false;
+  if (pump) pump();
+  tud_task();
+  mutex_exit(&__usb_mutex);
+  return true;
+}
+
 bool mounted()      { return TinyUSBDevice.mounted(); }
 bool suspended()    { return TinyUSBDevice.suspended(); }
 bool remoteWakeup() { return TinyUSBDevice.suspended() && TinyUSBDevice.remoteWakeup(); }
@@ -69,7 +81,7 @@ void setCompleteHook(CompleteHook hook) { g_hook = hook; }
 }  // namespace kvm
 
 // TinyUSB weak callback: the PC has just collected a report from `instance`.
-extern "C" void tud_hid_report_complete_cb(uint8_t instance, uint8_t const *report, uint16_t len) {
+extern "C" void __not_in_flash_func(tud_hid_report_complete_cb)(uint8_t instance, uint8_t const *report, uint16_t len) {
   kvm::usbdev::CompleteHook hook = kvm::usbdev::g_hook;
   if (!hook) return;
   // For the keyboard (no report ID) report[0] is the modifier byte, not an ID.
